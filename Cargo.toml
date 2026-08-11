@@ -1,0 +1,118 @@
+[package]
+name = "falco"
+version = "1.0.0"
+edition = "2021"
+description = "Falco — a tiny, from-scratch browser engine in Rust. HTML, CSS, JS, SVG, layout, paint → PNG or interactive window."
+license = "MIT"
+authors = ["poxk"]
+repository = "https://github.com/poxk/Falco"
+homepage = "https://github.com/poxk/Falco"
+keywords = ["browser", "html", "css", "javascript", "rendering"]
+categories = ["graphics", "rendering", "web-programming", "parsers"]
+
+[[bin]]
+name = "falco"
+path = "src/main.rs"
+
+[lib]
+name = "falco"
+path = "src/lib.rs"
+
+[dependencies]
+# HTTP fetch — small, blocking. TLS enabled via "tls" feature.
+ureq = { version = "2.10", default-features = false, features = ["gzip", "brotli"] }
+# Gzip decompression for .svgz files (gzip-compressed SVG served as raw bytes).
+flate2 = "1.0"
+# Brotli decompression for HTTP responses.
+brotli = "7.0"
+# Font rasterization — pure Rust, tiny.
+ab_glyph = "0.2"
+# Argument parsing — zero deps.
+pico-args = "0.5"
+# CRC32 for PNG encoder — pure Rust, ~1 KB.
+crc32fast = "1.4"
+# Regex engine — for JS RegExp support.
+regex = "1.11"
+# HarfBuzz text shaping — for proper ligatures, kerning, bidi.
+rustybuzz = "0.20"
+# ttf-parser — font parsing for rustybuzz (read font tables).
+ttf-parser = "0.25"
+# Error handling.
+anyhow = "1.0"
+# Live window + input — pure Rust, no system deps.
+minifb = "0.27"
+# Image decoding — PNG, JPEG, GIF, BMP, WebP, AVIF, ICO, TIFF, TGA, DDS (pure Rust).
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "gif", "bmp", "webp", "ico", "tiff", "tga", "dds", "rayon", "avif"] }
+# Base64 decoding for data: URLs.
+base64 = "0.22"
+rand = "0.8"
+# libc bindings for sandboxing (seccomp-bpf, capabilities).
+libc = { version = "0.2", optional = true }
+# Real seccomp-bpf filter compilation (NOT just prctl strict mode).
+# Compiles an allowlist into a real BPF program loaded into the kernel.
+seccompiler = { version = "0.4", optional = true }
+# Real TLS certificate chain validation. We do NOT roll our own crypto.
+# rustls + webpki-roots provides a real, audited implementation of:
+# - Path building (RFC 5280)
+# - Signature verification (RSA-PSS, ECDSA, Ed25519)
+# - Hostname verification (SAN/CN with wildcard support)
+# - Validity period checks
+# - Basic constraints / EKU enforcement
+rustls = { version = "0.23", default-features = false, features = ["ring", "tls12", "std"], optional = true }
+webpki-roots = { version = "0.26", optional = true }
+# Real OCSP request/response handling. We send an HTTP POST to the
+# responder URL embedded in the cert and parse the DER-encoded response.
+# (For production, OCSP stapling via TLS handshake is preferred; this
+# is a fallback when stapling isn't available.)
+rasn = { version = "0.22", optional = true }
+rasn-pkix = { version = "0.22", optional = true }
+# Real HTTP/2 — multiplexed streams over a single TLS connection.
+# The `h2` crate implements the full HTTP/2 framing layer (HPACK header
+# compression, stream multiplexing, flow control, server push).
+h2 = { version = "0.4", optional = true }
+# Real H.264 video decoding via Cisco's openh264 library (BSD-licensed,
+# royalty-free for software implementations). The `openh264` crate wraps
+# the C++ library; on first build it downloads a prebuilt binary.
+openh264 = { version = "0.7", optional = true }
+# Real OpenGL via `glow` — a safe wrapper over OpenGL ES 2.0/3.0.
+# Used for WebGL 1.0/2.0 when a GL context is available.
+glow = { version = "0.16", optional = true }
+# Tokio runtime for async I/O (needed by h2).
+tokio = { version = "1", features = ["full"], optional = true }
+# Tower service trait (h2 dependency for some versions).
+tower-service = { version = "0.3", optional = true }
+# Tokio-rustls integration (for h2 over TLS).
+tokio-rustls = { version = "0.26", optional = true }
+# HTTP types (Request/Response/Method/StatusCode) — used by h2.
+http = { version = "1", optional = true }
+wgpu = { version = "30.0.0", optional = true }
+
+# Windows API — we use raw FFI declarations instead of the winapi crate
+# to avoid version compatibility issues with winapi::ctypes.
+# No external Windows dependencies needed.
+
+[features]
+default = ["tls", "real-tls", "real-video"]
+tls = ["ureq/tls"]
+sandbox = ["dep:libc", "dep:seccompiler"]
+# Real cryptographic TLS validation (rustls + webpki-roots).
+# Disable with --no-default-features to use the stub verifier.
+real-tls = ["dep:rustls", "dep:webpki-roots", "dep:rasn", "dep:rasn-pkix"]
+# Real HTTP/2 via the `h2` crate (multiplexed streams, HPACK, flow control).
+real-http2 = ["dep:h2", "dep:tokio", "dep:tokio-rustls", "dep:http", "dep:rustls", "dep:webpki-roots"]
+# Real H.264 video decoding via openh264 (Cisco's open-source H.264 codec).
+real-video = ["dep:openh264"]
+# Real WebGL via glow (requires an OpenGL context, e.g. from a window).
+real-webgl = ["dep:glow"]
+# Real GPU rendering via wgpu (Vulkan/Metal/D3D12).
+real-gpu = ["dep:wgpu"]
+
+[dev-dependencies]
+tempfile = "3.10"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
+panic = "abort"
