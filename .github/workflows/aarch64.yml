@@ -17,7 +17,13 @@ jobs:
           printf '<html><body>hello falco</body></html>' > /tmp/plain.html
           ./target/release/falco /tmp/plain.html --out /tmp/plain.png --width 300
           ls -l /tmp/plain.png
+      - name: Render real menu template
+        run: |
+          ./target/release/falco testmenu.html --out /tmp/menu.png --width 996
+          ls -l /tmp/menu.png
       - uses: actions/upload-artifact@v4
         with:
           name: falco-aarch64
-          path: target/release/falco
+          path: |
+            target/release/falco
+            /tmp/menu.png
