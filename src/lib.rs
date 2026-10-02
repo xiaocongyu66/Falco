@@ -504,5 +504,18 @@ pub fn render_with_base_url(
     }
     let rasterizer = FontRasterizer::new()?;
     paint::paint(&commands, &mut canvas, &rasterizer);
+    eprintln!(
+        "[falco:dbg] css_len={} commands={} canvas={}x{}",
+        all_css.len(),
+        commands.len(),
+        canvas.width,
+        canvas.height
+    );
+    let nonwhite = canvas
+        .pixels
+        .chunks(4)
+        .filter(|p| !(p[0] == 255 && p[1] == 255 && p[2] == 255 && p[3] == 255))
+        .count();
+    eprintln!("[falco:dbg] nonwhite_pixels={}", nonwhite);
     Ok((canvas, commands))
 }
