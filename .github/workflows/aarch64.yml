@@ -1,0 +1,23 @@
+name: aarch64-build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build (release)
+        run: cargo build --release
+      - name: Smoke render
+        run: |
+          printf '<html><body>hello falco</body></html>' > /tmp/plain.html
+          ./target/release/falco /tmp/plain.html --out /tmp/plain.png --width 300
+          ls -l /tmp/plain.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: falco-aarch64
+          path: target/release/falco
